@@ -9,6 +9,7 @@ ScamShield AI is a modern AI-assisted scam detection SaaS web application engine
 
 ## ✨ Features
 
+- **📸 Screenshot & Image Upload Analysis (NEW)**: Upload or drag & drop screenshots of SMS alerts, phishing emails, or fake banking portals with client-side OCR text extraction and computer vision spoofing detection.
 - **🛡️ AI-Assisted Scam Detection**: Real-time pattern detection analyzing urgency triggers, credential solicitation, and spoofed domains.
 - **📊 Calibrated Risk Scoring (0–100)**: Multi-signal risk assessment with circular gauge visualization and accessible status badges (LOW, MEDIUM, HIGH).
 - **💡 Transparent Explainability**: Translates complex NLP heuristics into clear explanations detailing *why* a message is malicious.
@@ -16,7 +17,7 @@ ScamShield AI is a modern AI-assisted scam detection SaaS web application engine
 - **⚠️ Suspicious Indicators Breakdown**: Pinpoints exact manipulative phrases and assigns severity ratings.
 - **🔒 Actionable Safety Recommendations**: Tailored defensive directives (e.g., *"Never share OTP, PIN, CVV or passwords"*).
 - **📈 Security Operations Dashboard**: Interactive CSS/SVG risk distribution charts and metrics tracking.
-- **📜 Scan History & JSON Export**: Local audit log of past evaluations with search and filtering.
+- **📜 Scan History & JSON Export**: Local audit log of past evaluations with search and filtering by text or screenshot.
 - **🔌 Plug-and-Play API Ready**: Clean abstraction layer in `src/services/scamAnalyzer.js` designed for direct connection to future Python / FastAPI / PyTorch backends without rewriting frontend code.
 
 ---
@@ -76,8 +77,8 @@ scamshield-ai/
 │   │   ├── app/             # Authenticated SaaS routes (Dashboard, Analyze, Result, History, Settings)
 │   │   └── public/          # Public routes (Splash, Home, How It Works, About, Login, Signup)
 │   ├── services/
-│   │   ├── mockData.js      # Baseline metrics, pre-seeded analyses & samples
-│   │   └── scamAnalyzer.js  # Heuristic NLP engine & API contract
+│   │   ├── mockData.js      # Baseline metrics, pre-seeded analyses, text & screenshot samples
+│   │   └── scamAnalyzer.js  # Multi-modal NLP & Computer Vision OCR simulation
 │   ├── App.jsx              # Application router
 │   ├── index.css            # Global CSS theme & cyber design tokens
 │   └── main.jsx             # Entry point

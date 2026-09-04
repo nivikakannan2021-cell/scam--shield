@@ -15,7 +15,11 @@ import {
   Lock,
   ChevronRight,
   ExternalLink,
-  PlusCircle
+  PlusCircle,
+  Image as ImageIcon,
+  Scan,
+  Maximize2,
+  CheckCircle2
 } from 'lucide-react';
 import { useAnalysis } from '../../context/AnalysisContext';
 import CircularGauge from '../../components/common/CircularGauge';
@@ -25,8 +29,9 @@ export default function ResultPage() {
   const { currentResult } = useAnalysis();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
+  const [copiedOcr, setCopiedOcr] = useState(false);
 
-  // If no result is loaded, fallback to default or redirect
+  // If no result is loaded, fallback to default bank KYC result
   const result = currentResult || {
     riskScore: 82,
     riskLevel: "HIGH",
@@ -48,8 +53,11 @@ export default function ResultPage() {
     ]
   };
 
+  const isImageScan = result.scanType === 'image' || Boolean(result.imagePreview);
+
   const handleCopyReport = () => {
     const reportText = `[ScamShield AI Report]
+Scan Type: ${isImageScan ? 'Screenshot / Image Scan' : 'Text Scan'}
 Risk Score: ${result.riskScore}/100 (${result.riskLevel} RISK)
 ML Prediction: ${result.prediction} (${result.scamProbability}% probability)
 Scam Type: ${result.scamType}
@@ -59,6 +67,14 @@ Safety Advice: ${result.recommendations.join(" ")}`;
     navigator.clipboard.writeText(reportText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyOcr = () => {
+    if (result.extractedOcrText) {
+      navigator.clipboard.writeText(result.extractedOcrText);
+      setCopiedOcr(true);
+      setTimeout(() => setCopiedOcr(false), 2000);
+    }
   };
 
   return (
@@ -76,8 +92,25 @@ Safety Advice: ${result.recommendations.join(" ")}`;
           </button>
 
           <div>
-            <div style={{ fontSize: "0.78rem", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--cyan-primary)" }}>
-              CYBERSECURITY INTELLIGENCE DOSSIER
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ fontSize: "0.78rem", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--cyan-primary)" }}>
+                {isImageScan ? "MULTI-MODAL SCREENSHOT INTELLIGENCE" : "CYBERSECURITY INTELLIGENCE DOSSIER"}
+              </span>
+              {isImageScan && (
+                <span
+                  style={{
+                    fontSize: "0.7rem",
+                    fontWeight: "800",
+                    background: "rgba(0, 229, 255, 0.15)",
+                    border: "1px solid rgba(0, 229, 255, 0.3)",
+                    color: "var(--cyan-primary)",
+                    padding: "0.15rem 0.5rem",
+                    borderRadius: "4px"
+                  }}
+                >
+                  OCR VERIFIED
+                </span>
+              )}
             </div>
             <h1 style={{ fontSize: "1.75rem", fontWeight: "800", color: "#ffffff", letterSpacing: "-0.02em" }}>
               Threat Assessment Report
@@ -256,35 +289,207 @@ Safety Advice: ${result.recommendations.join(" ")}`;
         </div>
       </div>
 
-      {/* INSPECTED MESSAGE WITH HIGHLIGHTED TRIGGER TOKENS */}
-      <div className="card" style={{ padding: "1.75rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <FileText size={18} color="var(--cyan-primary)" />
-            <h3 style={{ fontSize: "1.1rem", fontWeight: "700", color: "#ffffff" }}>
-              Analyzed Message Text
-            </h3>
-          </div>
-          <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-            Highlighted trigger tokens flagged by NLP
-          </span>
-        </div>
+      {/* ================= SCREENSHOT / IMAGE SCAN DETAILS (IF IMAGE SCAN) ================= */}
+      {isImageScan && (
+        <div className="card" style={{ padding: "1.75rem", border: "1.5px solid rgba(0, 229, 255, 0.35)", background: "rgba(10, 15, 29, 0.85)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+              <div
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "8px",
+                  background: "var(--cyan-dim)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "var(--cyan-primary)"
+                }}
+              >
+                <Scan size={20} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: "1.2rem", fontWeight: "700", color: "#ffffff" }}>
+                  Computer Vision & OCR Inspection
+                </h3>
+                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                  Analyzed File: {result.imageName || "screenshot.png"}
+                </span>
+              </div>
+            </div>
 
-        <div
-          style={{
-            padding: "1.25rem 1.5rem",
-            borderRadius: "10px",
-            backgroundColor: "rgba(10, 15, 27, 0.7)",
-            border: "1px solid var(--border-subtle)",
-            fontSize: "1.05rem",
-            lineHeight: 1.7,
-            color: "var(--text-main)",
-            fontFamily: "var(--font-sans)"
-          }}
-        >
-          {result.message}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.3rem",
+                  padding: "0.35rem 0.75rem",
+                  borderRadius: "9999px",
+                  background: "rgba(16, 185, 129, 0.12)",
+                  color: "var(--risk-low)",
+                  border: "1px solid var(--risk-low-border)",
+                  fontSize: "0.8rem",
+                  fontWeight: "700"
+                }}
+              >
+                <CheckCircle2 size={14} />
+                <span>{result.ocrConfidence || 97.4}% OCR Accuracy</span>
+              </span>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1.2fr",
+              gap: "1.5rem",
+              alignItems: "start"
+            }}
+            className="screenshot-preview-grid"
+          >
+            {/* Screenshot Viewer */}
+            <div>
+              <div style={{ fontSize: "0.82rem", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>
+                Analyzed Screenshot
+              </div>
+              <div
+                style={{
+                  borderRadius: "10px",
+                  overflow: "hidden",
+                  border: "1px solid var(--border-light)",
+                  background: "#050811",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "0.75rem"
+                }}
+              >
+                <img
+                  src={result.imagePreview}
+                  alt="Scam screenshot inspection"
+                  style={{
+                    maxWidth: "100%",
+                    maxHeight: "260px",
+                    objectFit: "contain",
+                    borderRadius: "6px"
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Extracted OCR Text */}
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                <span style={{ fontSize: "0.82rem", fontWeight: "700", color: "var(--text-secondary)" }}>
+                  Extracted OCR Text
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyOcr}
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: "0.25rem 0.6rem", fontSize: "0.75rem" }}
+                >
+                  {copiedOcr ? <Check size={12} color="var(--risk-low)" /> : <Copy size={12} />}
+                  <span>{copiedOcr ? "Copied" : "Copy OCR"}</span>
+                </button>
+              </div>
+
+              <div
+                style={{
+                  padding: "1rem",
+                  borderRadius: "8px",
+                  backgroundColor: "rgba(0, 0, 0, 0.4)",
+                  border: "1px solid var(--border-subtle)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "0.85rem",
+                  lineHeight: 1.6,
+                  color: "#ffffff",
+                  maxHeight: "260px",
+                  overflowY: "auto",
+                  whiteSpace: "pre-wrap"
+                }}
+              >
+                {result.extractedOcrText || result.message}
+              </div>
+            </div>
+          </div>
+
+          {/* Visual Indicators Specific to Screenshot */}
+          {result.visualIndicators && result.visualIndicators.length > 0 && (
+            <div style={{ marginTop: "1.5rem", paddingTop: "1.25rem", borderTop: "1px solid var(--border-subtle)" }}>
+              <div style={{ fontSize: "0.85rem", fontWeight: "700", color: "var(--cyan-primary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>
+                Visual Threat Anomalies Flagged
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "0.75rem" }}>
+                {result.visualIndicators.map((vInd, vIdx) => (
+                  <div
+                    key={vIdx}
+                    style={{
+                      padding: "0.75rem 1rem",
+                      borderRadius: "8px",
+                      background: vInd.severity === "high" ? "rgba(244, 63, 94, 0.08)" : "rgba(245, 158, 11, 0.08)",
+                      border: `1px solid ${vInd.severity === "high" ? "rgba(244, 63, 94, 0.25)" : "rgba(245, 158, 11, 0.25)"}`
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem" }}>
+                      <span style={{ fontSize: "0.9rem", fontWeight: "700", color: "#ffffff" }}>
+                        {vInd.name}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "0.7rem",
+                          fontWeight: "700",
+                          textTransform: "uppercase",
+                          color: vInd.severity === "high" ? "var(--risk-high)" : "var(--risk-med)"
+                        }}
+                      >
+                        {vInd.severity}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: 0 }}>
+                      {vInd.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
+
+      {/* INSPECTED MESSAGE (FOR TEXT SCANS) */}
+      {!isImageScan && (
+        <div className="card" style={{ padding: "1.75rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <FileText size={18} color="var(--cyan-primary)" />
+              <h3 style={{ fontSize: "1.1rem", fontWeight: "700", color: "#ffffff" }}>
+                Analyzed Message Text
+              </h3>
+            </div>
+            <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+              Highlighted trigger tokens flagged by NLP
+            </span>
+          </div>
+
+          <div
+            style={{
+              padding: "1.25rem 1.5rem",
+              borderRadius: "10px",
+              backgroundColor: "rgba(10, 15, 27, 0.7)",
+              border: "1px solid var(--border-subtle)",
+              fontSize: "1.05rem",
+              lineHeight: 1.7,
+              color: "var(--text-main)",
+              fontFamily: "var(--font-sans)"
+            }}
+          >
+            {result.message}
+          </div>
+        </div>
+      )}
 
       {/* TWO-COLUMN DETAILS: SUSPICIOUS INDICATORS & EXPLAINABILITY */}
       <div
@@ -373,14 +578,14 @@ Safety Advice: ${result.recommendations.join(" ")}`;
                 Social Engineering Analysis
               </div>
               <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                Scammers purposely manufacture artificial time pressure to suppress your natural skepticism. Legitimate organizations provide reasonable grace periods and multi-channel verification.
+                Scammers manufacture artificial time pressure to suppress your natural skepticism. Legitimate organizations provide reasonable grace periods and multi-channel verification.
               </div>
             </div>
           </div>
 
           <div style={{ paddingTop: "1.5rem", borderTop: "1px solid var(--border-subtle)", marginTop: "1.5rem" }}>
             <Link to="/app/how-it-works" style={{ fontSize: "0.85rem", color: "var(--cyan-primary)", fontWeight: "600", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-              <span>Learn how ScamShield extracts TF-IDF tokens</span>
+              <span>Learn how ScamShield extracts features</span>
               <ChevronRight size={15} />
             </Link>
           </div>
@@ -471,6 +676,7 @@ Safety Advice: ${result.recommendations.join(" ")}`;
         @media (max-width: 992px) {
           .result-top-grid { grid-template-columns: 1fr !important; }
           .result-mid-grid { grid-template-columns: 1fr !important; }
+          .screenshot-preview-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>

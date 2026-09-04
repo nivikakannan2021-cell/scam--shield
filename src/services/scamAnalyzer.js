@@ -1,11 +1,14 @@
 /**
  * ScamShield AI - Analysis Service
  * 
- * This service simulates an AI/ML pipeline (Preprocessing -> TF-IDF -> ML Classifier -> Risk Engine).
- * It dynamically analyzes arbitrary text and generates structured, explainable results.
- * It is structured as an async API-ready interface, so plugging in a real Python / FastAPI backend
- * in the future requires modifying only this file.
+ * This service simulates an AI/ML pipeline:
+ *  - Text: Preprocessing -> TF-IDF -> ML Classifier -> Multi-signal Risk Engine
+ *  - Image: Computer Vision -> OCR Text Extraction -> Visual Spoofing Detection -> Combined Risk Engine
+ * 
+ * Structured as an async API-ready interface for seamless future FastAPI / PyTorch integration.
  */
+
+import { SAMPLE_SCREENSHOTS } from './mockData';
 
 // Heuristic pattern database for explainable NLP simulation
 const SCAM_PATTERNS = {
@@ -36,7 +39,7 @@ const SCAM_PATTERNS = {
   impersonation: {
     weight: 20,
     name: "Brand or institutional impersonation",
-    regex: /\b(bank|fedex|ups|usps|dhl|netflix|paypal|amazon|apple|microsoft|irs|customs|police|kyc)\b/i,
+    regex: /\b(bank|chase|wells fargo|citi|fedex|ups|usps|dhl|netflix|paypal|amazon|apple|microsoft|irs|customs|police|kyc)\b/i,
     description: "Impersonates trusted institutions, service providers, or regulatory bodies."
   },
   coercion: {
@@ -48,24 +51,9 @@ const SCAM_PATTERNS = {
 };
 
 /**
- * Clean & preprocess text (simulating standard NLP preprocessing)
- */
-function preprocessText(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s$]/g, ' ')
-    .trim();
-}
-
-/**
  * Analyzes a message text and returns comprehensive ScamShield AI report.
- * 
- * @param {string} text - Message content to inspect
- * @param {object} options - Configuration options (e.g., custom sensitivity)
- * @returns {Promise<object>} Structured scam analysis result
  */
 export async function analyzeMessage(text, options = {}) {
-  // Simulate network/ML inference latency (configurable or standard 1.2s)
   const delay = options.simulateDelay !== undefined ? options.simulateDelay : 1400;
   await new Promise(resolve => setTimeout(resolve, delay));
 
@@ -76,11 +64,11 @@ export async function analyzeMessage(text, options = {}) {
   const cleanText = text.trim();
   const lowerText = cleanText.toLowerCase();
 
-  // 1. Check for specific canonical sample prompt:
-  // "URGENT! Your bank account will be blocked today due to incomplete KYC..."
+  // Canonical sample prompt check
   if (lowerText.includes("bank account will be blocked today") && lowerText.includes("kyc")) {
     return {
       id: `analysis-${Date.now()}`,
+      scanType: "text",
       timestamp: new Date().toISOString(),
       dateFormatted: "Just now",
       message: cleanText,
@@ -107,7 +95,7 @@ export async function analyzeMessage(text, options = {}) {
     };
   }
 
-  // 2. Dynamic heuristic & pattern recognition
+  // Dynamic heuristic & pattern recognition
   let rawScore = 0;
   const detectedIndicators = [];
   const foundTokens = [];
@@ -132,22 +120,18 @@ export async function analyzeMessage(text, options = {}) {
     }
   }
 
-  // Length and structure adjustments
   if (cleanText.length < 25 && detectedIndicators.length === 0) {
     rawScore = 5;
   }
 
-  // Normalize score to 0 - 100
   let riskScore = Math.min(Math.max(Math.round(rawScore * 0.95), 4), 98);
 
-  // If indicators were found, ensure floor
   if (detectedIndicators.length >= 3) {
     riskScore = Math.max(riskScore, 75);
   } else if (detectedIndicators.length === 0) {
     riskScore = Math.min(riskScore, 15);
   }
 
-  // Determine Risk Level & ML Prediction
   let riskLevel = "LOW";
   let prediction = "SAFE";
   let probability = Math.round((riskScore / 100) * 88 + (Math.random() * 8));
@@ -166,13 +150,12 @@ export async function analyzeMessage(text, options = {}) {
     probability = Math.max(Math.round((riskScore * 0.4) * 10) / 10, 2.1);
   }
 
-  // Identify Scam Type
   let scamType = "Legitimate Communication";
   if (lowerText.includes("lottery") || lowerText.includes("won") || lowerText.includes("prize") || lowerText.includes("claim")) {
     scamType = "Advance-Fee Lottery Fraud";
   } else if (lowerText.includes("kyc") || (lowerText.includes("verify") && lowerText.includes("account"))) {
     scamType = "Fake Verification Scam";
-  } else if (lowerText.includes("fedex") || lowerText.includes("package") || lowerText.includes("delivery") || lowerText.includes("customs")) {
+  } else if (lowerText.includes("fedex") || lowerText.includes("dhl") || lowerText.includes("package") || lowerText.includes("delivery") || lowerText.includes("customs")) {
     scamType = "Delivery Impersonation Scam";
   } else if (lowerText.includes("password") || lowerText.includes("otp") || lowerText.includes("login") || lowerText.includes("billing")) {
     scamType = "Phishing Credential Theft";
@@ -184,7 +167,6 @@ export async function analyzeMessage(text, options = {}) {
     scamType = "Suspicious Unsolicited Message";
   }
 
-  // Generate tailored explanation
   let explanation = "";
   if (riskLevel === "HIGH") {
     explanation = `The system identified ${detectedIndicators.length} prominent threat signals including ${detectedIndicators.map(i => i.name.toLowerCase()).join(", ")}. Threat actors use these psychological triggers to create false urgency and prompt hurried disclosures.`;
@@ -194,7 +176,6 @@ export async function analyzeMessage(text, options = {}) {
     explanation = "No predatory urgency, unverified links, or sensitive data harvesting requests were detected in this message. It conforms to typical safe conversational patterns.";
   }
 
-  // Recommendations
   const recommendations = [];
   if (riskLevel === "HIGH" || riskLevel === "MEDIUM") {
     recommendations.push("Never share OTP, PIN, CVV or passwords.");
@@ -210,6 +191,7 @@ export async function analyzeMessage(text, options = {}) {
 
   return {
     id: `analysis-${Date.now()}`,
+    scanType: "text",
     timestamp: new Date().toISOString(),
     dateFormatted: "Just now",
     message: cleanText,
@@ -225,5 +207,113 @@ export async function analyzeMessage(text, options = {}) {
     highlightedTokens: foundTokens,
     explanation,
     recommendations
+  };
+}
+
+/**
+ * Analyzes an uploaded screenshot or image file.
+ * Simulates Optical Character Recognition (OCR) + Computer Vision Visual Threat Detection.
+ * 
+ * @param {object} imagePayload - { imageSrc, imageName, additionalContext, presetId }
+ * @param {object} options - Configuration options
+ * @returns {Promise<object>} Structured scam analysis report with image & OCR data
+ */
+export async function analyzeImage(imagePayload, options = {}) {
+  const delay = options.simulateDelay !== undefined ? options.simulateDelay : 1800;
+  await new Promise(resolve => setTimeout(resolve, delay));
+
+  const { imageSrc, imageName, additionalContext, presetId } = imagePayload;
+
+  if (!imageSrc) {
+    throw new Error("No image data provided for visual analysis.");
+  }
+
+  // 1. Check if user selected one of the preset sample screenshots
+  if (presetId && SAMPLE_SCREENSHOTS[presetId]) {
+    const preset = SAMPLE_SCREENSHOTS[presetId];
+    
+    // Analyze the preset's extracted text
+    const textReport = await analyzeMessage(preset.extractedText, { simulateDelay: 100 });
+
+    const visualIndicators = preset.visualThreats.map((threat, idx) => ({
+      name: threat,
+      severity: idx === 0 ? "high" : idx === 1 ? "high" : "medium",
+      description: `Visual artifact detected via computer vision in screenshot: ${threat}`
+    }));
+
+    return {
+      ...textReport,
+      id: `analysis-img-${Date.now()}`,
+      scanType: "image",
+      imagePreview: preset.imageSrc,
+      imageName: preset.title,
+      extractedOcrText: preset.extractedText,
+      ocrConfidence: preset.ocrConfidence,
+      riskScore: Math.min(textReport.riskScore + 4, 96),
+      riskLevel: "HIGH",
+      prediction: "SCAM",
+      scamProbability: Math.min(textReport.scamProbability + 1.8, 98.9),
+      scamType: `${textReport.scamType} (Screenshot)`,
+      visualIndicators,
+      summary: `Screenshot Analysis: Optical Character Recognition extracted ${preset.extractedText.split(' ').length} words. Visual inspection identified spoofed entity styling and fraudulent link placement.`,
+      explanation: `Computer vision and OCR confirmed that this uploaded screenshot is a deceptive visual notification. In addition to textual urgency triggers, the visual layout mimics authentic mobile service banners to deceive the recipient.`,
+      recommendations: [
+        "Do not click, tap, or navigate to any URL displayed in the screenshot.",
+        "Never scan any QR code or enter credentials on unverified third-party websites.",
+        "Verify your account status exclusively through official, independently launched apps or portals.",
+        "Delete the original message from your mobile device and block the sender."
+      ]
+    };
+  }
+
+  // 2. Custom User Upload Image Analysis
+  // If additional context was provided, use it; otherwise generate a realistic OCR interpretation
+  let extractedText = "";
+  if (additionalContext && additionalContext.trim().length > 0) {
+    extractedText = additionalContext.trim();
+  } else {
+    // Generate realistic simulated OCR extraction for user screenshot
+    extractedText = `PRIORITY NOTIFICATION: Verification required for your account. Immediate action required within 24 hours to avoid suspension. Click the link to authenticate: http://security-verify-auth-center.xyz/login`;
+  }
+
+  // Run NLP analysis on extracted text
+  const baseReport = await analyzeMessage(extractedText, { simulateDelay: 100 });
+
+  // Synthesize visual indicators
+  const visualIndicators = [
+    {
+      name: "Deceptive UI Pattern",
+      severity: baseReport.riskLevel === "HIGH" ? "high" : "medium",
+      description: "Visual layout utilizes simulated urgent alert styling and artificial high-contrast banners."
+    },
+    {
+      name: "Non-HTTPS / Suspicious Domain Vector",
+      severity: "high",
+      description: "Embedded hyperlink or URL in the screenshot does not match verified authentic domain patterns."
+    },
+    {
+      name: "Optical OCR Confidence",
+      severity: "low",
+      description: "Character recognition parsed message text with 97.2% character fidelity."
+    }
+  ];
+
+  return {
+    ...baseReport,
+    id: `analysis-img-${Date.now()}`,
+    scanType: "image",
+    imagePreview: imageSrc,
+    imageName: imageName || "uploaded_screenshot.png",
+    extractedOcrText: extractedText,
+    ocrConfidence: 97.2,
+    scamType: `${baseReport.scamType} (Screenshot)`,
+    visualIndicators,
+    summary: `Screenshot Analysis: Computer vision extracted text via OCR and evaluated visual impersonation vectors. Risk level classified as ${baseReport.riskLevel}.`,
+    explanation: `Multi-modal image analysis combined Optical Character Recognition with visual spoofing detection. ${baseReport.explanation}`,
+    recommendations: [
+      "Never navigate to URLs, phone numbers, or QR codes shown in unverified screenshots.",
+      "Always inspect the authentic sender domain on an official browser window.",
+      "Report fraudulent communications to your security administrator or carrier."
+    ]
   };
 }

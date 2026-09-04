@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { INITIAL_ANALYSIS_HISTORY, INITIAL_METRICS } from '../services/mockData';
-import { analyzeMessage } from '../services/scamAnalyzer';
+import { analyzeMessage, analyzeImage } from '../services/scamAnalyzer';
 
 const AnalysisContext = createContext();
 
@@ -31,7 +31,8 @@ export function AnalysisProvider({ children }) {
   });
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisStep, setAnalysisStep] = useState(1); // 1: Analyzing, 2: Checking patterns, 3: Calculating risk
+  const [analysisMode, setAnalysisMode] = useState('text'); // 'text' | 'image'
+  const [analysisStep, setAnalysisStep] = useState(1);
 
   // Sync history to localStorage
   useEffect(() => {
@@ -54,18 +55,17 @@ export function AnalysisProvider({ children }) {
   }, [currentResult]);
 
   /**
-   * Run scam analysis with multi-step progress feedback
+   * Run text scam analysis with multi-step progress feedback
    */
   const executeAnalysis = async (messageText) => {
     setIsAnalyzing(true);
+    setAnalysisMode('text');
     setAnalysisStep(1);
 
-    // Step 1 -> Step 2 transition
     const step2Timer = setTimeout(() => {
       setAnalysisStep(2);
     }, 500);
 
-    // Step 2 -> Step 3 transition
     const step3Timer = setTimeout(() => {
       setAnalysisStep(3);
     }, 1100);
@@ -88,16 +88,47 @@ export function AnalysisProvider({ children }) {
   };
 
   /**
+   * Run screenshot / image scam analysis with multi-step OCR progress feedback
+   */
+  const executeImageAnalysis = async (imagePayload) => {
+    setIsAnalyzing(true);
+    setAnalysisMode('image');
+    setAnalysisStep(1);
+
+    const step2Timer = setTimeout(() => {
+      setAnalysisStep(2);
+    }, 600);
+
+    const step3Timer = setTimeout(() => {
+      setAnalysisStep(3);
+    }, 1250);
+
+    try {
+      const result = await analyzeImage(imagePayload, { simulateDelay: 1900 });
+      clearTimeout(step2Timer);
+      clearTimeout(step3Timer);
+
+      setCurrentResult(result);
+      setHistory(prev => [result, ...prev]);
+      setIsAnalyzing(false);
+      return result;
+    } catch (error) {
+      clearTimeout(step2Timer);
+      clearTimeout(step3Timer);
+      setIsAnalyzing(false);
+      throw error;
+    }
+  };
+
+  /**
    * Calculate dashboard metrics dynamically from history and baseline
    */
   const getStats = () => {
-    // Base counts from initial mock metrics (128 total) plus new analyses
     const highCount = history.filter(h => h.riskLevel === "HIGH").length;
     const medCount = history.filter(h => h.riskLevel === "MEDIUM").length;
     const lowCount = history.filter(h => h.riskLevel === "LOW").length;
     const total = history.length;
 
-    // Scale with initial metrics so dashboard matches requested figures
     const totalDisplay = Math.max(INITIAL_METRICS.totalAnalyses, total + 123);
     const highDisplay = Math.max(INITIAL_METRICS.highRisk, highCount + 20);
     const medDisplay = Math.max(INITIAL_METRICS.mediumRisk, medCount + 33);
@@ -135,8 +166,10 @@ export function AnalysisProvider({ children }) {
         setCurrentResult,
         history,
         isAnalyzing,
+        analysisMode,
         analysisStep,
         executeAnalysis,
+        executeImageAnalysis,
         getStats,
         deleteHistoryItem,
         clearHistory,
